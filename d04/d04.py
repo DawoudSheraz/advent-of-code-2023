@@ -1,5 +1,3 @@
-from functools import reduce
-
 SAMPLE_INPUT = '''Card 1: 41 48 83 86 17 | 83 86  6 31 17  9 48 53
 Card 2: 13 32 20 16 61 | 61 30 68 82 17 32 24 19
 Card 3:  1 21 53 59 44 | 69 82 63 72 16 21 14  1
@@ -30,9 +28,9 @@ def part_2(data_list: list[str]) -> int:
     card_count = {idx: 1 for idx, card in enumerate(data_list, start=1)}
     for idx, line in enumerate(data_list, start=1):
         output_list = calculate_intersection_card_numbers(line)
-        for count in range(idx+1, idx + len(output_list) + 1):
-            card_count[count] += card_count[idx]
-    return reduce(lambda x, y: x + y, card_count.values())
+        for count in range(len(output_list)):
+            card_count[count + idx + 1] += card_count[idx]
+    return sum(card_count.values())
 
 
 with open('input.in') as f:
