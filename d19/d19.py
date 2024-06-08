@@ -1,4 +1,6 @@
 
+import math
+
 SAMPLE_INPUT = '''px{a<2006:qkq,m>2090:A,rfg}
 pv{a>1716:R,A}
 lnx{m>1548:A,A}
@@ -56,7 +58,6 @@ def get_parts(part_str: str) -> list[dict]:
 
 
 def get_part_status(part, workflow, workflows):
-
     for action in workflow:
         if isinstance(action, str):
             if action in 'AR':
@@ -68,6 +69,46 @@ def get_part_status(part, workflow, workflows):
                 if destination in 'AR':
                     return destination
                 return get_part_status(part, workflows[destination], workflows)
+
+
+def calculate_allowed_ranges__part_2(action, part):
+    if action == 'R':
+        return 0
+    return math.prod((high-low + 1) for low, high in part.values())
+
+
+def get_part_status__part_2(part, workflow, workflows):
+    output_value = 0
+    active_part = part
+    for action in workflow:
+        if isinstance(action, str):
+            if action in 'AR':
+                output_value = output_value + calculate_allowed_ranges__part_2(action, active_part)
+            else:
+                output_value = output_value + get_part_status__part_2(active_part, workflows[action], workflows)
+        else:
+            threshold_variable, op, value, destination = action
+            low, high = active_part[threshold_variable]
+            next_workflow_part = active_part.copy()
+            next_action_part = active_part.copy()
+            # Made a big blunder here. Instead of taking low,high, I was setting low=1 and high=4000
+            # After fixing this, we need to check if the new ranges are valid.
+            if op == '>':
+                next_workflow_part[threshold_variable] = (value + 1, high)
+                next_action_part[threshold_variable] = (low, value)
+            else:
+                next_workflow_part[threshold_variable] = (low, value - 1)
+                next_action_part[threshold_variable] = (value, high)
+            if next_workflow_part[threshold_variable][0] <= next_workflow_part[threshold_variable][1]:
+                if destination in 'AR':
+                    output_value = output_value + calculate_allowed_ranges__part_2(destination, next_workflow_part)
+                else:
+                    output_value += get_part_status__part_2(next_workflow_part, workflows[destination], workflows)
+            if next_action_part[threshold_variable][0] <= next_action_part[threshold_variable][1]:
+                active_part = next_action_part
+            else:
+                break
+    return output_value
 
 
 def part_1(input_str):
@@ -82,7 +123,16 @@ def part_1(input_str):
     return output_sum
 
 
+def part_2(input_str):
+    workflows, parts = input_str.split('\n\n')
+    workflows = get_workflows(workflows)
+    initial_part = {'x': (1, 4000), 'm': (1, 4000), 'a': (1, 4000), 's': (1, 4000)}
+    return get_part_status__part_2(initial_part, workflows['in'], workflows)
+
+
 with open('input.in') as f:
     data = f.read()
     # 397134
+    # 127517902575337
     print(part_1(data))
+    print(part_2(data))
