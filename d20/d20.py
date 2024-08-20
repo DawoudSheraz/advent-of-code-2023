@@ -1,4 +1,4 @@
-
+import math
 from dataclasses import dataclass, field
 
 SAMPLE_0 = '''broadcaster -> a, b, c
@@ -52,27 +52,21 @@ class Module:
         if self.type == '&':
             self.states[sender] = pulse
             if all(self.states.values()):
-                # self.low_pulse += 1
                 return 0, self.name
             else:
-                # self.high_pulse += 1
                 return 1, self.name
         elif self.type == '%':
             if pulse:
                 return None, None
             self.current_pulse = not self.current_pulse
             if self.current_pulse:
-                # self.high_pulse += 1
                 return 1, self.name
             else:
-                # self.low_pulse += 1
                 return 0, self.name
-        elif self.type == 'broadcaster':  # broadcast
+        elif self.type == 'broadcaster':
             if pulse:
-                # self.high_pulse += 1
                 return 1, self.name
             else:
-                # self.low_pulse += 1
                 return 0, self.name
         else:
             return None, self.name
@@ -106,7 +100,14 @@ def process_input(data: str):
     return module_dict
 
 
-def bfs(modules: dict[str, Module], start: str, pulse: bool):
+def bfs(
+        modules: dict[str, Module],
+        start: str,
+        pulse: bool,
+        counter: int = 0,
+        p2: bool = False,
+        first_pulse_counter: list[int] = []
+):
     queue = [(start, pulse, None)]
 
     while queue:
@@ -117,8 +118,15 @@ def bfs(modules: dict[str, Module], start: str, pulse: bool):
         sent_pulse, _ = current_module_obj.process_pulse(pulse, sender)
         if sent_pulse is None:
             continue
+        if current_module in ['ln', 'dr', 'zx', 'vn'] and sent_pulse and p2:
+            # ln, dr, zx, vn
+            # 4 modules providing input to kj which then inputs to rx
+            # kj is &, so it needs high from inputs to send low to rx
+            # LCM of when the modules send high first time gets the answer
+            # todo: make this automated
+            first_pulse_counter.append(counter)
+
         for destination in current_module_obj.destination:
-            # print(current_module, sent_pulse, destination)
             queue.append((destination, sent_pulse, current_module))
     return modules
 
@@ -131,27 +139,25 @@ def part_1(data: str):
     for module in modules.values():
         low += module.low_pulse
         high += module.high_pulse
-    # print(modules)
-    print(low, high)
     return low * high
 
 
 def part_2(data: str):
-    counter = 0
     modules = process_input(data)
+    counter = 0
+    first_pulse_counter = []
     while True:
         counter += 1
-        modules = bfs(modules, 'broadcaster', False)
-        print(counter, modules['rx'])
-
-        if modules['rx'].low_pulse == 1:
+        modules = bfs(modules, 'broadcaster', False, counter, True, first_pulse_counter)
+        if counter >= 6000:
             break
 
-    return counter
+    return math.lcm(*first_pulse_counter)
 
 
 with open('input.in', 'r') as f:
     data = f.read()
     # 949764474
-    # print(part_1(data))
+    # 243221023462303
+    print(part_1(data))
     print(part_2(data))
